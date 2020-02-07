@@ -1,22 +1,15 @@
 package main
 
 import (
-	// "crypto"
+	"encoding/json"
 	"fmt"
-	"net"
-	"os"
-	// "github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
-	"log"
-	// "k8s.io/klog"
+	"io/ioutil"
 	certutil "k8s.io/client-go/util/cert"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm"
-	// kubeadmcerts "k8s.io/kubernetes/cmd/kubeadm/app/phases/certs"
-	// pkiutil "k8s.io/kubernetes/cmd/kubeadm/app/util/pkiutil"
-	// "gopkg.in/yaml.v2"
-	// "crypto/x509"
-	"encoding/json"
-	"io/ioutil"
+	"log"
+	"net"
+	"os"
 )
 
 func main() {
@@ -29,8 +22,6 @@ func main() {
 	if cfg.CertsDir == "" {
 		log.Fatalln("[certs] certs store directory should be specified in config file")
 	}
-
-	// fmt.Println(cfg)
 
 	fmt.Printf("[certs] Storing certs to: %s\n", cfg.CertsDir)
 
