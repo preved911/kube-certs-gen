@@ -5,6 +5,8 @@ go 1.13
 require (
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/pflag v1.0.5
+	k8s.io/api v0.17.2
+	k8s.io/apimachinery v0.17.2
 	k8s.io/client-go v0.17.2
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.17.2
