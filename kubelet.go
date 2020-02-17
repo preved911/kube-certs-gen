@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
-	// "os"
 	"path/filepath"
 	"time"
 
@@ -17,26 +16,35 @@ import (
 	"encoding/pem"
 
 	"k8s.io/client-go/util/keyutil"
+
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-func getDataCA() (*x509.Certificate, *rsa.PrivateKey, error) {
-	// parse CA key
-	caPrivateKeyFile, err := ioutil.ReadFile(filepath.Join(certDir, "ca.key"))
+// func parseCertCA(certificatesDir string) ([]byte, error) {
+func parseCertOrKeyCA(certificatesDir, fileName string) (*pem.Block, error) {
+	ca, err := ioutil.ReadFile(filepath.Join(certificatesDir, fileName))
 	if err != nil {
-		return nil, nil, fmt.Errorf("error read CA private key: %s", err)
+		return nil, fmt.Errorf("error read %s file: %s", fileName, err)
 	}
-	pemBlockKeyCA, _ := pem.Decode(caPrivateKeyFile)
+	pemBlock, _ := pem.Decode(ca)
+
+	return pemBlock, nil
+}
+
+func getDataCA(certificatesDir string) (*x509.Certificate, *rsa.PrivateKey, error) {
+	// parse CA key
+	pemBlockKeyCA, err := parseCertOrKeyCA(certificatesDir, "ca.key")
 	caKey, err := x509.ParsePKCS1PrivateKey(pemBlockKeyCA.Bytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parse CA private key: %s", err)
 	}
 
-	// parse CA cert
-	caPublicKeyFile, err := ioutil.ReadFile(filepath.Join(certDir, "ca.crt"))
+	pemBlockCertCA, err := parseCertOrKeyCA(certificatesDir, "ca.crt")
 	if err != nil {
-		return nil, nil, fmt.Errorf("error read CA public key: %s", err)
+		return nil, nil, err
 	}
-	pemBlockCertCA, _ := pem.Decode(caPublicKeyFile)
 	caCert, err := x509.ParseCertificate(pemBlockCertCA.Bytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parse CA cert: %s", err)
@@ -45,7 +53,7 @@ func getDataCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 	return caCert, caKey, nil
 }
 
-func kubeletCertKeyGen(nodeName string) ([]byte, []byte, error) {
+func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error) {
 	// create private key
 	privateKeyData, err := keyutil.MakeEllipticPrivateKeyPEM()
 	if err != nil {
@@ -61,7 +69,7 @@ func kubeletCertKeyGen(nodeName string) ([]byte, []byte, error) {
 		CommonName:   "system:node:" + string(nodeName),
 	}
 
-	caCert, caKey, err := getDataCA()
+	caCert, caKey, err := getDataCA(certificatesDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,4 +102,52 @@ func kubeletCertKeyGen(nodeName string) ([]byte, []byte, error) {
 	}
 
 	return publicKey, privateKeyData, nil
+}
+
+func kubeletConfigCreate(nodeName, certificatesDir string) error {
+	cert, key, err := kubeletCertKeyGen(nodeName, certificatesDir)
+	if err != nil {
+		return err
+	}
+
+	caCertData, err := parseCertOrKeyCA(certificatesDir, "ca.crt")
+	if err != nil {
+		return err
+	}
+
+	clientConfig := &restclient.Config{
+		Host: "https://127.0.0.1:6443",
+	}
+
+	certData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	keyData := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: key})
+
+	// Build resulting kubeconfig.
+	kubeconfigData := clientcmdapi.Config{
+		// Define a cluster stanza based on the bootstrap kubeconfig.
+		Clusters: map[string]*clientcmdapi.Cluster{"default-cluster": {
+			Server:                   clientConfig.Host,
+			CertificateAuthorityData: caCertData.Bytes,
+		}},
+		// Define auth based on the obtained client cert.
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{"default-auth": {
+			ClientCertificateData: certData,
+			ClientKeyData:         keyData,
+		}},
+		// Define a context that connects the auth info and cluster, and set it as the default
+		Contexts: map[string]*clientcmdapi.Context{"default-context": {
+			Cluster:   "default-cluster",
+			AuthInfo:  "default-auth",
+			Namespace: "default",
+		}},
+		CurrentContext: "default-context",
+	}
+
+	fmt.Printf("[kube-certs-gen] Write \"kubelet-%s.conf\" to disk\n", nodeName)
+
+	// Marshal to disk
+	return clientcmd.WriteToFile(
+		kubeconfigData,
+		filepath.Join(certificatesDir, fmt.Sprintf("kubelet-%s.conf", nodeName)),
+	)
 }

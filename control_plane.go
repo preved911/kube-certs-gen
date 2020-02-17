@@ -12,12 +12,7 @@ import (
 	"net"
 )
 
-func createPKIAssets(config *string) error {
-	cfg, err := parseConfig(config)
-	if err != nil {
-		return err
-	}
-
+func createPKIAssets(cfg *KubeConfig) error {
 	cfg.initConfiguration.CertificatesDir = cfg.ClusterConfiguration.CertificatesDir
 
 	fmt.Printf(
@@ -119,7 +114,6 @@ func createFromCA(k *kubeadmcerts.KubeadmCert, kc KubeConfig, caCert *x509.Certi
 		return errors.Wrapf(err, "couldn't create %q certificate", k.Name)
 	}
 
-	fmt.Printf("k.Name: %s\n", k.Name)
 	switch k.Name {
 	case "apiserver":
 		err = generateMultipleCertAndKey(k, ic, *cfg, kc.APIServer.Servers, caCert, caKey)
@@ -147,11 +141,11 @@ func generateMultipleCertAndKey(k *kubeadmcerts.KubeadmCert, ic kubeadmapi.InitC
 			}
 			altNames.IPs = append(cfg.AltNames.IPs, ip)
 		}
+
 		cc := cfg
 		cc.AltNames = altNames
 		cc.CommonName = server.Name
 		cc.AltNames.DNSNames[0] = server.Name
-
 		k.BaseName = fmt.Sprintf("%s-%s", k.BaseName, server.Name)
 
 		if err := generateCertAndKey(k, ic, &cc, caCert, caKey); err != nil {
