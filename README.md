@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/preved911/kube-certs-gen.svg?branch=master)](https://travis-ci.com/preved911/kube-certs-gen)
+
 YAML configuration file example:
 ```yaml
 etcd:
