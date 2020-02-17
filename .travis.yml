@@ -10,7 +10,7 @@ deploy:
   provider: releases
   skip_cleanup: true
   token:
-    secret: $GITHUB_TOKEN
+    secret: c91aa9e41a7d6de1f86b819ba3df2538e0427426
   keep_history: true
   file_glob: true
   file: release/*
