@@ -2,3 +2,11 @@ language: go
 
 go:
 - 1.13.x
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN
+  keep_history: true
+  on:
+    tags: true
