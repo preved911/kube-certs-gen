@@ -9,7 +9,8 @@ script:
 deploy:
   provider: releases
   skip_cleanup: true
-  github_token: $GITHUB_TOKEN
+  token:
+    secret: $GITHUB_TOKEN
   keep_history: true
   file_glob: true
   file: release/*
