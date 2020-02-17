@@ -1,7 +1,6 @@
 package main
 
 import (
-	// "fmt"
 	flag "github.com/spf13/pflag"
 	"log"
 )

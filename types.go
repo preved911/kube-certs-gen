@@ -5,11 +5,15 @@ import (
 )
 
 type KubeConfig struct {
-	APIServer            APIServer `json:"api"`
+	APIServer            APIServer `json:"api" yaml:"api"`
 	Etcd                 Etcd
-	ClusterConfiguration kubeadmapi.ClusterConfiguration
+	ClusterConfiguration ClusterConfiguration `yaml:"clusterConfiguration"`
 	// LocalAPIEndpoint     kubeadmapi.APIEndpoint `json:",omitempty"`
-	initConfiguration kubeadmapi.InitConfiguration `json:"-"`
+	initConfiguration kubeadmapi.InitConfiguration `json:"-" yaml:"-"`
+}
+
+type ClusterConfiguration struct {
+	CertificatesDir string `yaml:"certificatesDir"`
 }
 
 type APIServer struct {
@@ -23,6 +27,6 @@ type Etcd struct {
 
 type Server struct {
 	Name     string
-	CertSANs []string
-	CertIPs  []string
+	CertSANs []string `yaml:"certSANs"`
+	CertIPs  []string `yaml:"certIPs"`
 }
