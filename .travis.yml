@@ -3,6 +3,9 @@ language: go
 go:
 - 1.13.x
 
+script:
+  - make
+
 deploy:
   provider: pages
   skip_cleanup: true
