@@ -5,23 +5,26 @@ YAML configuration file example:
 etcd:
   servers:
     - name: first-etcd
-      certSANs: 
-        - etcd-server-dns-name
-      certIPs:
-        - etcd-server-ip-address
+      certs:
+        SANs: 
+          - etcd-server-dns-name
+        IPs:
+          - etcd-server-ip-address
   peers:
     - name: first-etcd
-      certSANs:
-        - etcd-peer-dns-name
-      certIPs:
-        - etcd-peer-ip-address
+      certs:
+        SANs:
+          - etcd-peer-dns-name
+        IPs:
+          - etcd-peer-ip-address
 api:
   servers:
     - name: first-api
-      certSANs:
-        - kube-apiserver-dns-name
-      certIPs:
-        - kube-apiserver-ip-address
+      certs:
+        SANs:
+          - kube-apiserver-dns-name
+        IPs:
+          - kube-apiserver-ip-address
 clusterConfiguration:
   certificatesDir: /home/q/Downloads/exercism/certs
 ```

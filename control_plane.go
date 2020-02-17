@@ -131,10 +131,10 @@ func createFromCA(k *kubeadmcerts.KubeadmCert, kc KubeConfig, caCert *x509.Certi
 func generateMultipleCertAndKey(k *kubeadmcerts.KubeadmCert, ic kubeadmapi.InitConfiguration, cfg certutil.Config, servers []Server, caCert *x509.Certificate, caKey crypto.Signer) error {
 	for _, server := range servers {
 		altNames := cfg.AltNames
-		for _, dns := range server.CertSANs {
+		for _, dns := range server.Certs.SANs {
 			altNames.DNSNames = append(cfg.AltNames.DNSNames, dns)
 		}
-		for _, ip := range server.CertIPs {
+		for _, ip := range server.Certs.IPs {
 			ip := net.ParseIP(ip)
 			if ip == nil {
 				return fmt.Errorf("incorrect ip address: %s", ip)
