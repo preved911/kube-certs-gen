@@ -20,6 +20,7 @@ func parseConfig(configPath *string) (*KubeConfig, error) {
 		return nil, fmt.Errorf("config read error: %s", err)
 	}
 	defer configFile.Close()
+
 	config, err := ioutil.ReadAll(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("config read error: %s", err)
@@ -33,7 +34,7 @@ func parseConfig(configPath *string) (*KubeConfig, error) {
 			return nil, fmt.Errorf("config unmarshal error: %s", err)
 		}
 	case ".yaml":
-		if err = yaml.Unmarshal([]byte(config), &cfg); err != nil {
+		if err = yaml.Unmarshal(config, &cfg); err != nil {
 			return nil, fmt.Errorf("config unmarshal error: %s", err)
 		}
 	default:

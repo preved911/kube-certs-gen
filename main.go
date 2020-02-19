@@ -11,8 +11,10 @@ import (
 const AppVersion = "0.0.11"
 
 func main() {
-	var configPath *string = flag.StringP("config", "c", "", "specify config file path")
-	var version *bool = flag.BoolP("version", "v", false, "return tool version and exit")
+	var (
+		configPath *string = flag.StringP("config", "c", "", "specify config file path")
+		version    *bool   = flag.BoolP("version", "v", false, "return tool version and exit")
+	)
 
 	flag.Parse()
 
@@ -30,7 +32,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	for _, nodeName := range (*cfg).Nodes {
+	for _, nodeName := range cfg.Nodes {
 		if err := kubeletConfigCreate(nodeName, cfg.initConfiguration.CertificatesDir); err != nil {
 			log.Fatalln(err)
 		}

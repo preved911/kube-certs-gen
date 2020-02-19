@@ -12,6 +12,13 @@ import (
 	"net"
 )
 
+const (
+	APIServerDefaultBindAddress = "127.0.0.1"
+	APIServerDefaultBindPort    = 6443
+
+	KubeClusterDefaultCIRD = "10.96.0.0/12"
+)
+
 func createPKIAssets(cfg *KubeConfig) error {
 	cfg.initConfiguration.CertificatesDir = cfg.ClusterConfiguration.CertificatesDir
 
@@ -21,22 +28,27 @@ func createPKIAssets(cfg *KubeConfig) error {
 
 	// define kubernetes init configuration
 	cfg.initConfiguration.LocalAPIEndpoint = kubeadmapi.APIEndpoint{
-		AdvertiseAddress: "127.0.0.1",
-		BindPort:         6443,
+		AdvertiseAddress: APIServerDefaultBindAddress,
+		BindPort:         APIServerDefaultBindPort,
 	}
 	cfg.initConfiguration.Networking = kubeadmapi.Networking{
-		ServiceSubnet: "10.96.0.0/12",
+		ServiceSubnet: KubeClusterDefaultCIRD,
 	}
 
 	// create sa cert and key
-	kubeadmcerts.CreateServiceAccountKeyAndPublicKeyFiles(
+	err := kubeadmcerts.CreateServiceAccountKeyAndPublicKeyFiles(
 		cfg.initConfiguration.CertificatesDir)
+	if err != nil {
+		return err
+	}
 
 	certList := kubeadmcerts.GetDefaultCertList()
+
 	certTree, err := certList.AsMap().CertTree()
 	if err != nil {
 		return err
 	}
+
 	if err := createTree(*cfg, certTree); err != nil {
 		return errors.Wrap(err, "error creating PKI assets")
 	}
@@ -46,6 +58,7 @@ func createPKIAssets(cfg *KubeConfig) error {
 
 func createTree(kc KubeConfig, certTree kubeadmcerts.CertificateTree) error {
 	ic := kc.initConfiguration
+
 	for ca, leaves := range certTree {
 		cfg, err := ca.GetConfig(&ic)
 		if err != nil {
@@ -62,22 +75,10 @@ func createTree(kc KubeConfig, certTree kubeadmcerts.CertificateTree) error {
 			}
 			// Try and load a CA Key
 			caKey, err = pkiutil.TryLoadKeyFromDisk(ic.CertificatesDir, ca.BaseName)
+
 			if err != nil {
 				return err
-				// // If there's no CA key, make sure every certificate exists.
-				// for _, leaf := range leaves {
-				// 	cl := certKeyLocation{
-				// 		pkiDir:   ic.CertificatesDir,
-				// 		baseName: leaf.BaseName,
-				// 		uxName:   leaf.Name,
-				// 	}
-				// 	if err := validateSignedCertWithCA(cl, caCert); err != nil {
-				// 		return errors.Wrapf(err, "could not load expected certificate %q or validate the existence of key %q for it", leaf.Name, ca.Name)
-				// 	}
-				// }
-				// continue
 			}
-			// CA key exists; just use that to create new certificates.
 		} else {
 			// CACert doesn't already exist, create a new cert and key.
 			caCert, caKey, err = pkiutil.NewCertificateAuthority(cfg)
@@ -102,6 +103,7 @@ func createTree(kc KubeConfig, certTree kubeadmcerts.CertificateTree) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -128,18 +130,24 @@ func createFromCA(k *kubeadmcerts.KubeadmCert, kc KubeConfig, caCert *x509.Certi
 	return err
 }
 
-func generateMultipleCertAndKey(k *kubeadmcerts.KubeadmCert, ic kubeadmapi.InitConfiguration, cfg certutil.Config, servers []Server, caCert *x509.Certificate, caKey crypto.Signer) error {
+func generateMultipleCertAndKey(
+	k *kubeadmcerts.KubeadmCert,
+	ic kubeadmapi.InitConfiguration,
+	cfg certutil.Config,
+	servers []Server,
+	caCert *x509.Certificate,
+	caKey crypto.Signer) error {
 	for _, server := range servers {
 		altNames := cfg.AltNames
-		for _, dns := range server.Certs.SANs {
-			altNames.DNSNames = append(cfg.AltNames.DNSNames, dns)
-		}
+		altNames.DNSNames = append(altNames.DNSNames, server.Certs.SANs...)
+
 		for _, ip := range server.Certs.IPs {
 			ip := net.ParseIP(ip)
 			if ip == nil {
 				return fmt.Errorf("incorrect ip address: %s", ip)
 			}
-			altNames.IPs = append(cfg.AltNames.IPs, ip)
+
+			altNames.IPs = append(altNames.IPs, ip)
 		}
 
 		cc := cfg
@@ -156,7 +164,12 @@ func generateMultipleCertAndKey(k *kubeadmcerts.KubeadmCert, ic kubeadmapi.InitC
 	return nil
 }
 
-func generateCertAndKey(k *kubeadmcerts.KubeadmCert, ic kubeadmapi.InitConfiguration, cfg *certutil.Config, caCert *x509.Certificate, caKey crypto.Signer) error {
+func generateCertAndKey(
+	k *kubeadmcerts.KubeadmCert,
+	ic kubeadmapi.InitConfiguration,
+	cfg *certutil.Config,
+	caCert *x509.Certificate,
+	caKey crypto.Signer) error {
 	cert, key, err := pkiutil.NewCertAndKey(caCert, caKey, cfg)
 	if err != nil {
 		return err

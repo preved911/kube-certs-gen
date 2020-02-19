@@ -8,9 +8,9 @@ import (
 type KubeConfig struct {
 	APIServer            APIServer `json:"api" yaml:"api"`
 	Etcd                 Etcd
-	Nodes                []string                     `yaml:"nodes"`
-	ClusterConfiguration ClusterConfiguration         `yaml:"clusterConfiguration"`
-	initConfiguration    kubeadmapi.InitConfiguration `json:"-" yaml:"-"`
+	Nodes                []string             `yaml:"nodes"`
+	ClusterConfiguration ClusterConfiguration `yaml:"clusterConfiguration"`
+	initConfiguration    kubeadmapi.InitConfiguration
 }
 
 // ClusterConfiguration contain cluster configuration fields.

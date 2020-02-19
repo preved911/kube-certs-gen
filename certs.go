@@ -14,11 +14,13 @@ import (
 // If there already is a certificate file at the given path; kubeadm tries to load it and check if the values in the
 // existing and the expected certificate equals. If they do; kubeadm will just skip writing the file as it's up-to-date,
 // otherwise this function returns an error.
-func writeCertificateAuthorityFilesIfNotExist(pkiDir string, baseName string, caCert *x509.Certificate, caKey crypto.Signer) error {
-
+func writeCertificateAuthorityFilesIfNotExist(
+	pkiDir string,
+	baseName string,
+	caCert *x509.Certificate,
+	caKey crypto.Signer) error {
 	// If cert or key exists, we should try to load them
 	if pkiutil.CertOrKeyExist(pkiDir, baseName) {
-
 		// Try to load .crt and .key from the PKI directory
 		caCert, _, err := pkiutil.TryLoadCertAndKeyFromDisk(pkiDir, baseName)
 		if err != nil {
@@ -42,6 +44,7 @@ func writeCertificateAuthorityFilesIfNotExist(pkiDir string, baseName string, ca
 			return errors.Wrapf(err, "failure while saving %s certificate and key", baseName)
 		}
 	}
+
 	return nil
 }
 
@@ -49,8 +52,13 @@ func writeCertificateAuthorityFilesIfNotExist(pkiDir string, baseName string, ca
 // If there already is a certificate file at the given path; kubeadm tries to load it and check if the values in the
 // existing and the expected certificate equals. If they do; kubeadm will just skip writing the file as it's up-to-date,
 // otherwise this function returns an error.
-func writeCertificateFilesIfNotExist(pkiDir string, baseName string, signingCert *x509.Certificate, cert *x509.Certificate, key crypto.Signer, cfg *certutil.Config) error {
-
+func writeCertificateFilesIfNotExist(
+	pkiDir string,
+	baseName string,
+	signingCert *x509.Certificate,
+	cert *x509.Certificate,
+	key crypto.Signer,
+	cfg *certutil.Config) error {
 	// Checks if the signed certificate exists in the PKI directory
 	if pkiutil.CertOrKeyExist(pkiDir, baseName) {
 		// Try to load signed certificate .crt and .key from the PKI directory
@@ -78,7 +86,11 @@ func writeCertificateFilesIfNotExist(pkiDir string, baseName string, signingCert
 			return errors.Wrapf(err, "failure while saving %s certificate and key", baseName)
 		}
 		if pkiutil.HasServerAuth(cert) {
-			fmt.Printf("[certs] %s serving cert is signed for DNS names %v and IPs %v\n", baseName, cert.DNSNames, cert.IPAddresses)
+			fmt.Printf(
+				"[certs] %s serving cert is signed for DNS names %v and IPs %v\n",
+				baseName,
+				cert.DNSNames,
+				cert.IPAddresses)
 		}
 	}
 
@@ -93,10 +105,12 @@ func validateCertificateWithConfig(cert *x509.Certificate, baseName string, cfg 
 			return errors.Wrapf(err, "certificate %s is invalid", baseName)
 		}
 	}
+
 	for _, ipAddress := range cfg.AltNames.IPs {
 		if err := cert.VerifyHostname(ipAddress.String()); err != nil {
 			return errors.Wrapf(err, "certificate %s is invalid", baseName)
 		}
 	}
+
 	return nil
 }

@@ -29,6 +29,7 @@ func parseCertOrKeyCA(certificatesDir, fileName string) (*pem.Block, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error read %s file: %s", fileName, err)
 	}
+
 	pemBlock, _ := pem.Decode(ca)
 
 	return pemBlock, nil
@@ -37,6 +38,10 @@ func parseCertOrKeyCA(certificatesDir, fileName string) (*pem.Block, error) {
 func getDataCA(certificatesDir string) (*x509.Certificate, *rsa.PrivateKey, error) {
 	// parse CA key
 	pemBlockKeyCA, err := parseCertOrKeyCA(certificatesDir, "ca.key")
+	if err != nil {
+		return nil, nil, err
+	}
+
 	caKey, err := x509.ParsePKCS1PrivateKey(pemBlockKeyCA.Bytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parse CA private key: %s", err)
@@ -46,6 +51,7 @@ func getDataCA(certificatesDir string) (*x509.Certificate, *rsa.PrivateKey, erro
 	if err != nil {
 		return nil, nil, err
 	}
+
 	caCert, err := x509.ParseCertificate(pemBlockCertCA.Bytes)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parse CA cert: %s", err)
@@ -60,6 +66,7 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating key: %v", err)
 	}
+
 	key, err := keyutil.ParsePrivateKeyPEM(privateKeyData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid private key for certificate request: %v", err)
@@ -67,7 +74,7 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error)
 
 	subject := &pkix.Name{
 		Organization: []string{"system:nodes"},
-		CommonName:   "system:node:" + string(nodeName),
+		CommonName:   "system:node:" + nodeName,
 	}
 
 	caCert, caKey, err := getDataCA(certificatesDir)
