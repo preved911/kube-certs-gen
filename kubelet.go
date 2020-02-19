@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -105,6 +106,16 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error)
 }
 
 func kubeletConfigCreate(nodeName, certificatesDir string) error {
+	var kubeletConfigFile string = fmt.Sprintf("kubelet-%s.conf", nodeName)
+
+	// check kubelet.conf existence
+	kubeletInfo, err := os.Stat(filepath.Join(certificatesDir, kubeletConfigFile))
+	if err == nil && kubeletInfo.Size() > 0 && !kubeletInfo.IsDir() {
+		fmt.Printf("[kube-certs-gen] Using the existing \"kubelet-%s.conf\" from disk\n", nodeName)
+		return nil
+	}
+
+	// generate kubelet client cert and key
 	cert, key, err := kubeletCertKeyGen(nodeName, certificatesDir)
 	if err != nil {
 		return err
@@ -148,6 +159,6 @@ func kubeletConfigCreate(nodeName, certificatesDir string) error {
 	// Marshal to disk
 	return clientcmd.WriteToFile(
 		kubeconfigData,
-		filepath.Join(certificatesDir, fmt.Sprintf("kubelet-%s.conf", nodeName)),
+		filepath.Join(certificatesDir, kubeletConfigFile),
 	)
 }

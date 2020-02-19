@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// AppVersion current build application version.
 const AppVersion = "0.0.11"
 
 func main() {
@@ -29,7 +30,9 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if err := kubeletConfigCreate("fr-node-detector-0", cfg.initConfiguration.CertificatesDir); err != nil {
-		log.Fatalln(err)
+	for _, nodeName := range (*cfg).Nodes {
+		if err := kubeletConfigCreate(nodeName, cfg.initConfiguration.CertificatesDir); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
