@@ -25,6 +25,9 @@ api:
           - kube-apiserver-dns-name
         IPs:
           - kube-apiserver-ip-address
+nodes:
+  - "kube-node-0"
+  - "kube-node-1"
 clusterConfiguration:
   certificatesDir: /home/q/Downloads/exercism/certs
 ```
