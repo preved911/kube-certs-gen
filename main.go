@@ -33,8 +33,12 @@ func main() {
 	}
 
 	for _, nodeName := range cfg.Nodes {
-		if err := kubeletConfigCreate(nodeName, cfg.initConfiguration.CertificatesDir); err != nil {
+		if err := kubeletKubeConfigCreate(nodeName, cfg.initConfiguration.CertificatesDir); err != nil {
 			log.Fatalln(err)
 		}
+	}
+
+	if err := kubeletConfigCreate(cfg.initConfiguration.CertificatesDir); err != nil {
+		log.Fatalln(err)
 	}
 }

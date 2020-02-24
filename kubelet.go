@@ -21,6 +21,10 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	kubeletphase "k8s.io/kubernetes/cmd/kubeadm/app/phases/kubelet"
+	// kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
+	kubeletconfig "k8s.io/kubelet/config/v1beta1"
 )
 
 // func parseCertCA(certificatesDir string) ([]byte, error) {
@@ -112,7 +116,7 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error)
 	return publicKey, privateKeyData, nil
 }
 
-func kubeletConfigCreate(nodeName, certificatesDir string) error {
+func kubeletKubeConfigCreate(nodeName, certificatesDir string) error {
 	var kubeletConfigFile string = fmt.Sprintf("kubelet-%s.conf", nodeName)
 
 	// check kubelet.conf existence
@@ -168,4 +172,41 @@ func kubeletConfigCreate(nodeName, certificatesDir string) error {
 		kubeconfigData,
 		filepath.Join(certificatesDir, kubeletConfigFile),
 	)
+}
+
+func kubeletConfigCreate(certificatesDir string) error {
+	var (
+		healthzPort                                                                int32 = 10248
+		kubeletAnonymousAuthenticationEnabled, kubeletWebhookAuthenticationEnabled bool
+	)
+
+	kubeletWebhookAuthenticationEnabled = true
+
+	kubeletConfig := &kubeletconfig.KubeletConfiguration{
+		Authentication: kubeletconfig.KubeletAuthentication{
+			X509: kubeletconfig.KubeletX509Authentication{
+				ClientCAFile: "/etc/kubernetes/pki/ca.crt",
+			},
+			Webhook: kubeletconfig.KubeletWebhookAuthentication{
+				Enabled: &kubeletWebhookAuthenticationEnabled,
+			},
+			Anonymous: kubeletconfig.KubeletAnonymousAuthentication{
+				Enabled: &kubeletAnonymousAuthenticationEnabled,
+			},
+		},
+		Authorization: kubeletconfig.KubeletAuthorization{
+			Mode: "Webhook",
+		},
+		CgroupDriver:       "systemd",
+		ClusterDNS:         []string{"10.96.0.10"},
+		ClusterDomain:      "cluster.local",
+		HealthzBindAddress: "127.0.0.1",
+		HealthzPort:        &healthzPort,
+		RotateCertificates: true,
+		StaticPodPath:      "/etc/kubernetes/manifests",
+	}
+
+	return kubeletphase.WriteConfigToDisk(
+		kubeletConfig,
+		certificatesDir)
 }
