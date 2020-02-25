@@ -116,7 +116,7 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) (*pem.Block, *pem.Block
 	}
 
 	publicKeyBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
+		Type:  "CERTIFICATE",
 		Bytes: publicKey,
 	}
 

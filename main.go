@@ -8,7 +8,7 @@ import (
 )
 
 // AppVersion current build application version.
-const AppVersion = "0.0.14"
+const AppVersion = "0.0.15"
 
 func main() {
 	var (
