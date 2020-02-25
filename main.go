@@ -8,7 +8,7 @@ import (
 )
 
 // AppVersion current build application version.
-const AppVersion = "0.0.11"
+const AppVersion = "0.0.13"
 
 func main() {
 	var (
@@ -33,9 +33,13 @@ func main() {
 	}
 
 	for _, nodeName := range cfg.Nodes {
-		if err := kubeletKubeConfigCreate(nodeName, cfg.initConfiguration.CertificatesDir); err != nil {
+		if err := writeKubeletClientPem(nodeName, cfg.initConfiguration.CertificatesDir); err != nil {
 			log.Fatalln(err)
 		}
+	}
+
+	if err := kubeletKubeConfigCreate(cfg.initConfiguration.CertificatesDir); err != nil {
+		log.Fatalln(err)
 	}
 
 	if err := kubeletConfigCreate(cfg.initConfiguration.CertificatesDir); err != nil {

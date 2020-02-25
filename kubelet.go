@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"crypto"
+	"crypto/ecdsa"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -64,14 +65,15 @@ func getDataCA(certificatesDir string) (*x509.Certificate, *rsa.PrivateKey, erro
 	return caCert, caKey, nil
 }
 
-func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error) {
+// func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error) {
+func kubeletCertKeyGen(nodeName, certificatesDir string) (*pem.Block, *pem.Block, error) {
 	// create private key
 	privateKeyData, err := keyutil.MakeEllipticPrivateKeyPEM()
 	if err != nil {
 		return nil, nil, fmt.Errorf("error generating key: %v", err)
 	}
 
-	key, err := keyutil.ParsePrivateKeyPEM(privateKeyData)
+	privateKey, err := keyutil.ParsePrivateKeyPEM(privateKeyData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid private key for certificate request: %v", err)
 	}
@@ -103,7 +105,7 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error)
 		},
 	}
 
-	keySigner, ok := key.(crypto.Signer)
+	keySigner, ok := privateKey.(crypto.Signer)
 	if !ok {
 		return nil, nil, fmt.Errorf("private key does not implement crypto.Signer")
 	}
@@ -113,16 +115,36 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) ([]byte, []byte, error)
 		return nil, nil, fmt.Errorf("error generate certificate: %s", err)
 	}
 
-	return publicKey, privateKeyData, nil
+	publicKeyBlock := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKey,
+	}
+
+	key, ok := privateKey.(*ecdsa.PrivateKey)
+	if !ok {
+		return nil, nil, fmt.Errorf("error transform private key interface{} to *ecdsa.PrivateKey")
+	}
+
+	keyBytes, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshal private key: %s", err)
+	}
+
+	privateKeyBlock := &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: keyBytes,
+	}
+
+	return publicKeyBlock, privateKeyBlock, nil
 }
 
-func kubeletKubeConfigCreate(nodeName, certificatesDir string) error {
-	var kubeletConfigFile string = fmt.Sprintf("kubelet-%s.conf", nodeName)
+func writeKubeletClientPem(nodeName, certificatesDir string) error {
+	var kubeletClientPemFile string = fmt.Sprintf("kubelet-client-current-%s.pem", nodeName)
 
 	// check kubelet.conf existence
-	kubeletInfo, err := os.Stat(filepath.Join(certificatesDir, kubeletConfigFile))
+	kubeletInfo, err := os.Stat(filepath.Join(certificatesDir, kubeletClientPemFile))
 	if err == nil && kubeletInfo.Size() > 0 && !kubeletInfo.IsDir() {
-		fmt.Printf("[kube-certs-gen] Using the existing \"kubelet-%s.conf\" from disk\n", nodeName)
+		fmt.Printf("[kube-certs-gen] Using the existing \"kubelet-client-current-%s.pem\" from disk\n", nodeName)
 		return nil
 	}
 
@@ -132,6 +154,35 @@ func kubeletKubeConfigCreate(nodeName, certificatesDir string) error {
 		return err
 	}
 
+	pemOutFile, err := os.Create(
+		filepath.Join(
+			certificatesDir,
+			fmt.Sprintf("kubelet-client-current-%s.pem", nodeName),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to open \"kubelet-client-current-%s.pem\" for writing: %s", nodeName, err)
+	}
+
+	defer pemOutFile.Close()
+
+	if err := pem.Encode(pemOutFile, cert); err != nil {
+		return fmt.Errorf("Failed to write public key data to \"kubelet-client-current-%s.pem\": %s", nodeName, err)
+	}
+
+	// fmt.Printf("[kube-cert-gen] Writing public key data to kubelet-client-current-%s.pem\n", nodeName)
+
+	if err := pem.Encode(pemOutFile, key); err != nil {
+		return fmt.Errorf("Failed to write private key data to \"kubelet-client-current-%s.pem\": %s", nodeName, err)
+	}
+
+	// fmt.Printf("[kube-cert-gen] Writing private key data to kubelet-client-current-%s.pem\n", nodeName)
+	fmt.Printf("[kube-cert-gen] Writing kubelet client pem data to \"kubelet-client-current-%s.pem\"\n", nodeName)
+
+	return nil
+}
+
+func kubeletKubeConfigCreate(certificatesDir string) error {
 	caCertData, err := parseCertOrKeyCA(certificatesDir, "ca.crt")
 	if err != nil {
 		return err
@@ -140,9 +191,6 @@ func kubeletKubeConfigCreate(nodeName, certificatesDir string) error {
 	clientConfig := &restclient.Config{
 		Host: "https://127.0.0.1:6443",
 	}
-
-	certData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
-	keyData := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: key})
 
 	// Build resulting kubeconfig.
 	kubeconfigData := clientcmdapi.Config{
@@ -153,8 +201,8 @@ func kubeletKubeConfigCreate(nodeName, certificatesDir string) error {
 		}},
 		// Define auth based on the obtained client cert.
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{"default-auth": {
-			ClientCertificateData: certData,
-			ClientKeyData:         keyData,
+			ClientCertificate: "/var/lib/kubelet/pki/kubelet-client-current.pem",
+			ClientKey:         "/var/lib/kubelet/pki/kubelet-client-current.pem",
 		}},
 		// Define a context that connects the auth info and cluster, and set it as the default
 		Contexts: map[string]*clientcmdapi.Context{"default-context": {
@@ -165,12 +213,12 @@ func kubeletKubeConfigCreate(nodeName, certificatesDir string) error {
 		CurrentContext: "default-context",
 	}
 
-	fmt.Printf("[kube-certs-gen] Write \"kubelet-%s.conf\" to disk\n", nodeName)
+	fmt.Println("[kube-certs-gen] Write \"kubelet.conf\" to disk")
 
 	// Marshal to disk
 	return clientcmd.WriteToFile(
 		kubeconfigData,
-		filepath.Join(certificatesDir, kubeletConfigFile),
+		filepath.Join(certificatesDir, "kubelet.conf"),
 	)
 }
 
