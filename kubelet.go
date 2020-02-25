@@ -188,6 +188,13 @@ func kubeletKubeConfigCreate(certificatesDir string) error {
 		return err
 	}
 
+	caCertPemBlock := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caCertData.Bytes,
+	}
+
+	caCertPem := pem.EncodeToMemory(caCertPemBlock)
+
 	clientConfig := &restclient.Config{
 		Host: "https://127.0.0.1:6443",
 	}
@@ -197,7 +204,7 @@ func kubeletKubeConfigCreate(certificatesDir string) error {
 		// Define a cluster stanza based on the bootstrap kubeconfig.
 		Clusters: map[string]*clientcmdapi.Cluster{"default-cluster": {
 			Server:                   clientConfig.Host,
-			CertificateAuthorityData: caCertData.Bytes,
+			CertificateAuthorityData: caCertPem,
 		}},
 		// Define auth based on the obtained client cert.
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{"default-auth": {
