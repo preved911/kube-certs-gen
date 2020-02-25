@@ -139,12 +139,12 @@ func kubeletCertKeyGen(nodeName, certificatesDir string) (*pem.Block, *pem.Block
 }
 
 func writeKubeletClientPem(nodeName, certificatesDir string) error {
-	var kubeletClientPemFile string = fmt.Sprintf("kubelet-client-current-%s.pem", nodeName)
+	var kubeletClientPemFile string = fmt.Sprintf("kubelet-client-%s.pem", nodeName)
 
 	// check kubelet.conf existence
 	kubeletInfo, err := os.Stat(filepath.Join(certificatesDir, kubeletClientPemFile))
 	if err == nil && kubeletInfo.Size() > 0 && !kubeletInfo.IsDir() {
-		fmt.Printf("[kube-certs-gen] Using the existing \"kubelet-client-current-%s.pem\" from disk\n", nodeName)
+		fmt.Printf("[kube-certs-gen] Using the existing \"kubelet-client-%s.pem\" from disk\n", nodeName)
 		return nil
 	}
 
@@ -157,27 +157,27 @@ func writeKubeletClientPem(nodeName, certificatesDir string) error {
 	pemOutFile, err := os.Create(
 		filepath.Join(
 			certificatesDir,
-			fmt.Sprintf("kubelet-client-current-%s.pem", nodeName),
+			fmt.Sprintf("kubelet-client-%s.pem", nodeName),
 		),
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to open \"kubelet-client-current-%s.pem\" for writing: %s", nodeName, err)
+		return fmt.Errorf("Failed to open \"kubelet-client-%s.pem\" for writing: %s", nodeName, err)
 	}
 
 	defer pemOutFile.Close()
 
 	if err := pem.Encode(pemOutFile, cert); err != nil {
-		return fmt.Errorf("Failed to write public key data to \"kubelet-client-current-%s.pem\": %s", nodeName, err)
+		return fmt.Errorf("Failed to write public key data to \"kubelet-client-%s.pem\": %s", nodeName, err)
 	}
 
-	// fmt.Printf("[kube-cert-gen] Writing public key data to kubelet-client-current-%s.pem\n", nodeName)
+	// fmt.Printf("[kube-cert-gen] Writing public key data to kubelet-client-%s.pem\n", nodeName)
 
 	if err := pem.Encode(pemOutFile, key); err != nil {
-		return fmt.Errorf("Failed to write private key data to \"kubelet-client-current-%s.pem\": %s", nodeName, err)
+		return fmt.Errorf("Failed to write private key data to \"kubelet-client-%s.pem\": %s", nodeName, err)
 	}
 
-	// fmt.Printf("[kube-cert-gen] Writing private key data to kubelet-client-current-%s.pem\n", nodeName)
-	fmt.Printf("[kube-cert-gen] Writing kubelet client pem data to \"kubelet-client-current-%s.pem\"\n", nodeName)
+	// fmt.Printf("[kube-cert-gen] Writing private key data to kubelet-client-%s.pem\n", nodeName)
+	fmt.Printf("[kube-cert-gen] Writing kubelet client pem data to \"kubelet-client-%s.pem\"\n", nodeName)
 
 	return nil
 }
