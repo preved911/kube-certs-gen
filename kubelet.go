@@ -253,6 +253,7 @@ func kubeletConfigCreate(certificatesDir string) error {
 			Mode: "Webhook",
 		},
 		CgroupDriver:       "systemd",
+		ResolverConfig:     "/run/systemd/resolve/resolv.conf",
 		ClusterDNS:         []string{"10.96.0.10"},
 		ClusterDomain:      "cluster.local",
 		HealthzBindAddress: "127.0.0.1",
